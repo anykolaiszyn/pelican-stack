@@ -1,193 +1,222 @@
-# Pelican Panel Docker Compose Deployment
+# Pelican Panel Docker Compose Deployment (using ghcr.io/pelican-dev/panel)
 
-This repository provides a one-click deployment for [Pelican Panel](https://github.com/pelicanpanel/panel) using Docker Compose.
+This repository provides a one-click deployment for [Pelican Panel](https://github.com/pelican-dev/panel) using Docker Compose, based on their official Docker deployment guide.
+
+**Note:** According to the Pelican Panel documentation, "Deploying the panel in Docker is still a work in progress. While the plan is to make Docker the preferred installation method, we currently recommend the standard deployment instructions." This setup follows their provided Docker guide.
 
 ## Features
 
-- Deploys Pelican Panel and a MariaDB database.
-- Uses an internal bridge network for communication between services.
-- Utilizes named volumes for persistent data storage.
-- Automatically configures required environment variables.
-- Includes an optional script to generate a `.env` file.
-- Provides health checks for services.
+- Deploys Pelican Panel using the `ghcr.io/pelican-dev/panel:latest` image.
+- **Integrated Caddy Web Server:** Handles HTTP/S and can automatically obtain SSL certificates from Let's Encrypt.
+- **SQLite Database:** Defaults to using an SQLite database, stored in a persistent volume. (External databases can be configured via the installer).
+- Uses an internal bridge network.
+- Utilizes named volumes for persistent data storage (`pelican-data`, `pelican-logs`).
+- Configurable via environment variables in a `.env` file.
+- Includes helper scripts (`init.sh`, `init.ps1`) to generate a `.env` file from `.env.example`.
 - Compatible with Portainer stack import.
 
 ## Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/)
-- [Docker Compose](https://docs.docker.com/compose/install/)
+- [Docker CE](https://docs.docker.com/get-docker/) (Docker Compose v2 is included with Docker CLI)
 - Git
 
 ## Quick Start
 
-1. **Clone the repository:**
+1.  **Clone the repository:**
 
-   You can clone the repository using HTTPS with a Personal Access Token (PAT) or by using SSH.
+    You can clone the repository using HTTPS with a Personal Access Token (PAT) or by using SSH.
 
-   **Using HTTPS with a Personal Access Token (PAT):**
+    **Using HTTPS with a Personal Access Token (PAT):**
 
-   If you don't have a PAT, create one by following the [GitHub documentation on creating a PAT](https://github.com/settings/tokens) with the `repo` scope.
+    If you don't have a PAT, create one by following the [GitHub documentation on creating a PAT](https://github.com/settings/tokens) with the `repo` scope.
 
-   ```bash
-   git clone https://YOUR_USERNAME:YOUR_PAT@github.com/anykolaiszyn/pelican-stack.git
-   cd pelican-stack
-   ```
-   (Replace `YOUR_USERNAME` and `YOUR_PAT` with your GitHub username and Personal Access Token)
+    ```bash
+    git clone https://YOUR_USERNAME:YOUR_PAT@github.com/anykolaiszyn/pelican-stack.git # Replace with your username and PAT
+    cd pelican-stack
+    ```
 
-   **Alternatively, using SSH:**
+    **Alternatively, using SSH:**
 
-   Ensure you have an SSH key added to your GitHub account. You can find instructions in the [GitHub documentation on adding an SSH key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account).
+    Ensure you have an SSH key added to your GitHub account. You can find instructions in the [GitHub documentation on adding an SSH key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account).
 
-   ```bash
-   git clone git@github.com:anykolaiszyn/pelican-stack.git
-   cd pelican-stack
-   ```
+    ```bash
+    git clone git@github.com:anykolaiszyn/pelican-stack.git
+    cd pelican-stack
+    ```
 
-2. **Initialize environment variables (optional but recommended):**
+2.  **Initialize and Configure Environment Variables:**
 
-   The `init.sh` script will create a `.env` file with default values if one doesn't exist. You can customize these values before starting the containers.
+    Run the `init` script for your OS, or manually copy `.env.example` to `.env`.
 
-   ```bash
-   ./scripts/init.sh 
-   ```
+    ```bash
+    # For Linux/macOS
+    ./scripts/init.sh
+    # For Windows (PowerShell)
+    .\scripts\init.ps1
+    ```
 
-   Or, on Windows (PowerShell):
+    **Crucially, edit the `.env` file and set:**
+    *   `APP_URL`: Your panel's public URL (e.g., `https://panel.example.com` or `http://localhost`). If using `https://`, Caddy will attempt to get an SSL certificate.
+    *   `ADMIN_EMAIL`: Your email address, used by Caddy for Let's Encrypt registration.
 
-   ```powershell
-   .\scripts\init.ps1
-   ```
+3.  **Start the services:**
 
-   Alternatively, you can manually copy `.env.example` to `.env` and edit it:
+    ```bash
+    docker compose up -d
+    ```
 
-   ```bash
-   cp .env.example .env
-   ```
+4.  **Back Up Your Encryption Key:**
 
-3. **Start the services:**
+    The first time the container starts, it generates an `APP_KEY`. Back this up securely.
+    ```bash
+    docker compose logs panel | grep 'Generated app key:'
+    ```
+    *(You might need to wait a moment after starting for the key to be generated and logged).*
 
-   ```bash
-   docker compose up -d
-   ```
+5.  **Complete Installation via Browser:**
 
-   Pelican Panel will be accessible at `http://localhost:8080` by default.
+    Open your browser and navigate to `YOUR_APP_URL/installer` (e.g., `http://localhost/installer` or `https://panel.example.com/installer`) to finish setting up the panel.
+    The panel will use SQLite by default. Other drivers (cache, session, queue) also have sensible defaults.
+
+    *Note: The first time the container starts after installing or updating, it will apply database migrations, which may take a few minutes. The panel will not be accessible during this process.*
 
 ## Configuration
 
 ### Environment Variables
 
-Environment variables are managed in the `.env` file. If this file is not present, default values from `docker-compose.yml` or `.env.example` will be used.
+Key variables in your `.env` file:
 
-Key variables:
+-   `APP_URL`: (Required) The base URL your panel will be reachable on (e.g., `https://panel.example.com`).
+-   `ADMIN_EMAIL`: (Required) Your email, used by Caddy for Let's Encrypt.
+-   `APP_PORT_HTTP` (Optional): External HTTP port. Defaults to `80`.
+-   `APP_PORT_HTTPS` (Optional): External HTTPS port. Defaults to `443`.
+-   `DOCKER_SUBNET` (Optional): Docker network subnet. Defaults to `172.20.0.0/16`.
 
-- `PELICAN_PORT`: The external port for Pelican Panel (default: `8080`).
-- `DB_DATABASE`: MariaDB database name (default: `pelican`).
-- `DB_USERNAME`: MariaDB username (default: `pelicanuser`).
-- `DB_PASSWORD`: MariaDB user password (default: `changeme`). **It is strongly recommended to change this.**
-- `DB_ROOT_PASSWORD`: MariaDB root password (default: `supersecretpassword`). **It is strongly recommended to change this.**
+### Default Drivers
 
-### Changing Ports
+-   **Cache Driver:** Filesystem
+-   **Database Driver:** SQLite
+-   **Queue Driver:** Database
+-   **Session Driver:** Filesystem
 
-To change the port Pelican Panel runs on:
+For other configurations (UI, CAPTCHA, email, backups, OAuth, or external databases/Redis), use the settings menu in the admin panel after installation.
 
-1. Modify the `PELICAN_PORT` variable in your `.env` file.
+## Managing the Panel
 
-   ```env
-   PELICAN_PORT=8081
-   ```
+-   **Stopping:**
+    ```bash
+    docker compose down
+    ```
+-   **Starting:**
+    ```bash
+    docker compose up -d
+    ```
+-   **Viewing Logs:**
+    ```bash
+    docker compose logs panel
+    ```
+-   **Uninstalling (Deletes all data!):**
+    ```bash
+    docker compose down -v
+    ```
 
-2. Restart the services:
+## Advanced Options
 
-   ```bash
-   docker compose down
-   docker compose up -d
-   ```
+### Custom Caddyfile
 
-   Pelican Panel will then be accessible at `http://localhost:8081` (or your chosen port).
+If you need to customize the Caddy web server configuration (e.g., for use behind another reverse proxy that terminates TLS):
 
-### Setting Up Admin Account
+1.  Create a `Caddyfile` in the same directory as your `docker-compose.yml`.
+2.  Uncomment the Caddyfile volume mount in `docker-compose.yml`:
+    ```diff
+    volumes:
+      - pelican-data:/pelican-data
+      - pelican-logs:/var/www/html/storage/logs
+    - ./Caddyfile:/etc/caddy/Caddyfile # Uncomment this line
+    ```
+3.  Restart the panel: `docker compose up -d --force-recreate`
 
-Once Pelican Panel is running:
+**Example `Caddyfile` for use behind a reverse proxy (TLS terminated upstream):**
+Replace `[UPSTREAM IP]` with the IP address of your reverse proxy.
 
-1. Open your web browser and navigate to `http://localhost:8080` (or your configured URL).
-2. The first time you access the panel, you will be guided through the setup process, which includes creating an administrator account.
+```caddy
+{
+    admin off
+    servers {
+        trusted_proxies static [UPSTREAM IP]
+    }
+}
 
-### Connecting to an External MariaDB
+:80 {
+    root * /var/www/html/public
+    encode gzip
 
-If you prefer to use an existing or external MariaDB server:
+    php_fastcgi 127.0.0.1:9000
+    file_server
+}
+```
+*Note: If the `trusted_proxies` directive is not set or improperly configured, file uploads may fail.*
 
-1. **Modify `docker-compose.yml`:**
-   - Remove or comment out the `pelican-db` service definition.
-   - In the `pelican-panel` service, update the `P_DB_HOST` environment variable to point to your external database host.
-   - Ensure `P_DB_PORT`, `P_DB_DATABASE`, `P_DB_USERNAME`, and `P_DB_PASSWORD` in your `.env` file (or directly in `docker-compose.yml` if not using `.env`) are set to match your external database credentials.
+### Raising File Upload Limits
 
-   Example `pelican-panel` environment variables for an external DB:
+To raise the default 2MB file upload limit, modify your custom `Caddyfile`:
 
-   ```yaml
-   environment:
-     P_CORE_APP_URL: "http://localhost:${PELICAN_PORT:-8080}"
-     P_CORE_TIMEZONE: "UTC"
-     P_DB_HOST: "your_external_db_host_or_ip" # Update this
-     P_DB_PORT: "3306" # Update if your DB uses a different port
-     P_DB_DATABASE: "${DB_DATABASE:-pelican}"
-     P_DB_USERNAME: "${DB_USERNAME:-pelicanuser}"
-     P_DB_PASSWORD: "${DB_PASSWORD:-changeme}"
-     # ... other P_ variables
-   ```
+```caddy
+yourdomain.com_or_localhost { # Replace with your APP_URL host or remove if using a global block
+    # ... other Caddy settings ...
 
-2. **Ensure Network Accessibility:**
-   - Your Pelican Panel container must be able to reach the external MariaDB server over the network.
-   - If your external database is running on the Docker host machine, you might use `host.docker.internal` as the `P_DB_HOST` (on Docker Desktop for Mac/Windows) or the host's IP address.
+    encode gzip
 
-3. **Restart the services:**
+    php_fastcgi 127.0.0.1:9000 {
+        env PHP_VALUE "upload_max_filesize = 256M
+                       post_max_size = 256M"
+    }
+    file_server
 
-   ```bash
-   docker compose down # If pelican-db was previously running
-   docker compose up -d pelican-panel # Start only the panel service
-   ```
+    # ... other Caddy settings ...
+}
+```
+If you are not using a specific domain in your Caddyfile (e.g. just `:80`), you can place the `php_fastcgi` block inside the site block like so:
+```caddy
+:80 {
+    # ... other Caddy settings ...
+    encode gzip
 
-## Helper Scripts
+    php_fastcgi 127.0.0.1:9000 {
+        env PHP_VALUE "upload_max_filesize = 256M
+                       post_max_size = 256M"
+    }
+    file_server
+    # ... other Caddy settings ...
+}
+```
 
-- **`./scripts/init.sh` (Linux/macOS) / `.\scripts\init.ps1` (Windows):**
-  - Checks if a `.env` file exists.
-  - If not, it copies `.env.example` to `.env` to provide a starting point for your configuration.
 
 ## Portainer Stack Import
 
 This `docker-compose.yml` is designed to be self-contained and can be directly used to deploy the stack in Portainer:
 
-1. In Portainer, navigate to "Stacks".
-2. Click "Add stack".
-3. Choose "Web editor" as the build method.
-4. Give your stack a name (e.g., `pelican-panel`).
-5. Copy the contents of `docker-compose.yml` from this repository and paste it into the web editor.
-6. You can define environment variables directly in Portainer under the "Environment variables" section if you prefer not to use a `.env` file or want to override specific values.
-7. Click "Deploy the stack".
+1.  In Portainer, navigate to "Stacks".
+2.  Click "Add stack".
+3.  Choose "Web editor" as the build method.
+4.  Give your stack a name (e.g., `pelican-panel`).
+5.  Copy the contents of `docker-compose.yml` from this repository and paste it into the web editor.
+6.  Define the required environment variables (`APP_URL`, `ADMIN_EMAIL`) directly in Portainer under the "Environment variables" section. You can also set optional ones like `APP_PORT_HTTP`, `APP_PORT_HTTPS`, `DOCKER_SUBNET`.
+7.  Click "Deploy the stack".
 
 ## Data Persistence
 
 Named volumes are used to persist data:
 
-- `pelican_data`: Stores Pelican Panel application data.
-- `pelican_logs`: Stores Pelican Panel logs.
-- `pelican_config`: Stores Pelican Panel configuration files.
-- `pelican_db_data`: Stores MariaDB database files.
+-   `pelican-data`: Stores Pelican Panel application data, including the SQLite database, configurations, and other user-specific files (as per `XDG_DATA_HOME`).
+-   `pelican-logs`: Stores Pelican Panel logs from `/var/www/html/storage/logs`.
 
-These volumes are managed by Docker and will persist even if the containers are removed and recreated.
+These volumes are managed by Docker and will persist even if the containers are removed and recreated (unless you use `docker compose down -v`).
 
 ## Labels
 
-The `docker-compose.yml` includes OCI standard labels for better metadata and discovery:
-
-- `org.opencontainers.image.source`
-- `org.opencontainers.image.description`
-- `org.opencontainers.image.licenses`
-- `maintainer`
-- `version`
+The `docker-compose.yml` includes OCI standard labels for better metadata and discovery.
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a pull request or open an issue.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details (if you add one).
