@@ -16,14 +16,31 @@ This repository provides a one-click deployment for [Pelican Panel](https://gith
 
 - [Docker](https://docs.docker.com/get-docker/)
 - [Docker Compose](https://docs.docker.com/compose/install/)
+- Git
 
 ## Quick Start
 
 1. **Clone the repository:**
 
+   You can clone the repository using HTTPS with a Personal Access Token (PAT) or by using SSH.
+
+   **Using HTTPS with a Personal Access Token (PAT):**
+
+   If you don't have a PAT, create one by following the [GitHub documentation on creating a PAT](https://github.com/settings/tokens) with the `repo` scope.
+
    ```bash
-   git clone https://github.com/your-username/pelican-docker-compose.git # Replace with your repository URL
-   cd pelican-docker-compose
+   git clone https://YOUR_USERNAME:YOUR_PAT@github.com/anykolaiszyn/pelican-stack.git
+   cd pelican-stack
+   ```
+   (Replace `YOUR_USERNAME` and `YOUR_PAT` with your GitHub username and Personal Access Token)
+
+   **Alternatively, using SSH:**
+
+   Ensure you have an SSH key added to your GitHub account. You can find instructions in the [GitHub documentation on adding an SSH key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account).
+
+   ```bash
+   git clone git@github.com:anykolaiszyn/pelican-stack.git
+   cd pelican-stack
    ```
 
 2. **Initialize environment variables (optional but recommended):**
@@ -33,12 +50,15 @@ This repository provides a one-click deployment for [Pelican Panel](https://gith
    ```bash
    ./scripts/init.sh 
    ```
+
    Or, on Windows (PowerShell):
+
    ```powershell
    .\scripts\init.ps1
    ```
 
    Alternatively, you can manually copy `.env.example` to `.env` and edit it:
+
    ```bash
    cp .env.example .env
    ```

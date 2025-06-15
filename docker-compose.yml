@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   pelican-panel:
-    image: ghcr.io/pelicanpanel/pelican:latest
+    image: ghcr.io/pelicanpanel/pelican:v1.1.0 # Changed from :latest to a stable version
     container_name: pelican-panel
     restart: unless-stopped
     ports:
@@ -37,7 +37,7 @@ services:
       - "org.opencontainers.image.description=Pelican Panel, a free and open-source game server management panel."
       - "org.opencontainers.image.licenses=MIT"
       - "maintainer=GitHub Copilot"
-      - "version=1.0.0"
+      - "version=1.1.0" # Updated version to match the image tag
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/auth/login"]
       interval: 30s
