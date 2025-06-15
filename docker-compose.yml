@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  pelican-panel:
+    image: ghcr.io/pelicanpanel/pelican:latest
+    container_name: pelican-panel
+    restart: unless-stopped
+    ports:
+      - "${PELICAN_PORT:-8080}:80"
+    environment:
+      P_CORE_APP_URL: "http://localhost:${PELICAN_PORT:-8080}"
+      P_CORE_TIMEZONE: "UTC"
+      P_DB_HOST: "pelican-db"
+      P_DB_PORT: "3306"
+      P_DB_DATABASE: "${DB_DATABASE:-pelican}"
+      P_DB_USERNAME: "${DB_USERNAME:-pelicanuser}"
+      P_DB_PASSWORD: "${DB_PASSWORD:-changeme}"
+      # Optional: Mailgun, Sendgrid, or SMTP settings for email
+      # P_MAIL_DRIVER: smtp
+      # P_MAIL_HOST: mail.example.com
+      # P_MAIL_PORT: 587
+      # P_MAIL_USERNAME: user@example.com
+      # P_MAIL_PASSWORD: password
+      # P_MAIL_ENCRYPTION: tls
+      # P_MAIL_FROM_ADDRESS: no-reply@example.com
+      # P_MAIL_FROM_NAME: "Pelican Panel"
+    volumes:
+      - pelican_data:/app/var
+      - pelican_logs:/app/var/logs
+      - pelican_config:/app/config
+    depends_on:
+      - pelican-db
+    networks:
+      - pelican-net
+    labels:
+      - "org.opencontainers.image.source=https://github.com/pelicanpanel/panel"
+      - "org.opencontainers.image.description=Pelican Panel, a free and open-source game server management panel."
+      - "org.opencontainers.image.licenses=MIT"
+      - "maintainer=GitHub Copilot"
+      - "version=1.0.0"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/auth/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  pelican-db:
+    image: mariadb:10.6
+    container_name: pelican-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-supersecretpassword}"
+      MYSQL_DATABASE: "${DB_DATABASE:-pelican}"
+      MYSQL_USER: "${DB_USERNAME:-pelicanuser}"
+      MYSQL_PASSWORD: "${DB_PASSWORD:-changeme}"
+    volumes:
+      - pelican_db_data:/var/lib/mysql
+    networks:
+      - pelican-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${DB_USERNAME:-pelicanuser}", "-p${DB_PASSWORD:-changeme}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pelican_data:
+    driver: local
+  pelican_logs:
+    driver: local
+  pelican_config:
+    driver: local
+  pelican_db_data:
+    driver: local
+
+networks:
+  pelican-net:
+    driver: bridge
